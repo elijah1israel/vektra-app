@@ -35,33 +35,36 @@ class EdgeButton extends StatelessWidget {
     final radius = size == EdgeButtonSize.large ? 18.0 : 14.0;
     final padH = size == EdgeButtonSize.large ? 20.0 : 16.0;
     final padV = size == EdgeButtonSize.large ? 14.0 : 12.0;
-    final content = busy
-        ? const Spinner(size: 16)
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16),
-                const SizedBox(width: 8),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.sans(
-                    size: 13.5,
-                    weight: FontWeight.w600,
-                    color: _foreground(),
-                  ),
+    // Fix the content height so the button doesn't jump between
+    // text-line-height and spinner-height when toggling busy.
+    final contentHeight = size == EdgeButtonSize.large ? 22.0 : 20.0;
+    final fg = _foreground();
+
+    final children = busy
+        ? [
+            Spinner(size: 18, color: fg),
+          ]
+        : <Widget>[
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: AppTheme.sans(
+                  size: 13.5,
+                  weight: FontWeight.w600,
+                  color: fg,
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 6),
-                Icon(trailing, size: 16),
-              ],
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 6),
+              Icon(trailing, size: 16, color: fg),
             ],
-          );
+          ];
 
     Widget button = InkWell(
       onTap: _enabled ? onPressed : null,
@@ -71,15 +74,14 @@ class EdgeButton extends StatelessWidget {
         padding:
             EdgeInsets.symmetric(horizontal: padH, vertical: padV),
         decoration: _decoration(radius),
-        child: DefaultTextStyle.merge(
-          style: AppTheme.sans(
-            size: 13.5,
-            weight: FontWeight.w600,
-            color: _foreground(),
-          ),
-          child: IconTheme.merge(
-            data: IconThemeData(color: _foreground(), size: 16),
-            child: content,
+        child: SizedBox(
+          height: contentHeight,
+          child: Row(
+            mainAxisSize:
+                fullWidth ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: children,
           ),
         ),
       ),

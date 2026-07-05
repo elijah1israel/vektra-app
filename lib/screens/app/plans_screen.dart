@@ -188,10 +188,43 @@ class _PlansScreenState extends State<PlansScreen> {
         if (closed.isNotEmpty) ...[
           const SizedBox(height: 10),
           _sectionTitle('History (${closed.length})'),
-          ...closed.map(_historyRow),
+          ...closed.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _HistoryRow(
+                plan: p,
+                onDelete: () => _deletePlan(p),
+                statusChip: _statusChip(p['status'] as String? ?? ''),
+                directionChip: _directionChipOrNull(
+                    p['direction'] as String? ?? ''),
+              ),
+            ),
+          ),
         ],
       ],
     );
+  }
+
+  Future<void> _deletePlan(Map<String, dynamic> plan) async {
+    if (!await _confirm(
+        "Permanently delete this plan? This can't be undone.")) {
+      return;
+    }
+    try {
+      final api = context.read<ApiClient>();
+      await api.dio.delete('/plans/${plan['id']}/');
+      setState(() {
+        _plans = _plans?.where((p) => p['id'] != plan['id']).toList();
+      });
+      ToastMessenger.instance.success('Plan deleted.');
+    } catch (e) {
+      ToastMessenger.instance.error(describeError(e));
+    }
+  }
+
+  Widget? _directionChipOrNull(String direction) {
+    if (direction.isEmpty || direction == 'none') return null;
+    return _directionChip(direction);
   }
 
   Widget _sectionTitle(String s) => Padding(
@@ -329,39 +362,6 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  Widget _historyRow(Map<String, dynamic> plan) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: EdgeCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            _statusChip(plan['status'] as String? ?? ''),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                (plan['instrument'] as Map?)?['label'] as String? ??
-                    '—',
-                style: AppTheme.sans(
-                  size: 13,
-                  weight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Text(
-              plan['outcome']?.toString() ?? '',
-              style: AppTheme.sans(
-                size: 11,
-                color: EdgeColors.muted,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _statusChip(String status) {
     final map = <String, (Color, String)>{
       'awaiting_setup': (
@@ -413,6 +413,252 @@ class _PlansScreenState extends State<PlansScreen> {
           letterSpacing: 1.2,
         ),
       ),
+    );
+  }
+}
+
+/// Expand-on-tap history entry for closed / invalidated plans. Preview
+/// row shows chips + first line of narrative; tapping opens the full
+/// narrative, KV grid of levels, and a delete action.
+class _HistoryRow extends StatefulWidget {
+  const _HistoryRow({
+    required this.plan,
+    required this.onDelete,
+    required this.statusChip,
+    required this.directionChip,
+  });
+
+  final Map<String, dynamic> plan;
+  final Future<void> Function() onDelete;
+  final Widget statusChip;
+  final Widget? directionChip;
+
+  @override
+  State<_HistoryRow> createState() => _HistoryRowState();
+}
+
+class _HistoryRowState extends State<_HistoryRow> {
+  bool _open = false;
+  bool _deleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = widget.plan;
+    final narrative = plan['narrative'] as String? ?? '';
+    final invalidation = plan['invalidation'] as String? ?? '';
+    final preview =
+        (narrative.isNotEmpty ? narrative : invalidation)
+            .split('\n')
+            .first;
+    final label = (plan['instrument'] as Map?)?['label'] as String? ?? '—';
+    final outcome = _outcomeLabel(plan['outcome'] as String?);
+    final tps = (plan['take_profits'] as List?) ?? const [];
+
+    return EdgeCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              child: Row(
+                children: [
+                  widget.statusChip,
+                  const SizedBox(width: 8),
+                  if (widget.directionChip != null) ...[
+                    widget.directionChip!,
+                    const SizedBox(width: 8),
+                  ],
+                  Text(label,
+                      style: AppTheme.sans(
+                        size: 13,
+                        weight: FontWeight.w600,
+                        color: Colors.white,
+                      )),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      preview.isEmpty ? '(no narrative)' : preview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.sans(
+                        size: 11.5,
+                        color: EdgeColors.muted,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedRotation(
+                    turns: _open ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: const Icon(
+                      Icons.expand_more,
+                      color: EdgeColors.muted,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: !_open
+                ? const SizedBox.shrink()
+                : Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: EdgeColors.white06),
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (narrative.isNotEmpty) ...[
+                          Text(
+                            narrative,
+                            style: AppTheme.sans(
+                              size: 12.5,
+                              color: EdgeColors.slate300,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        _kvGrid(context, [
+                          if (outcome != null) ('Outcome', outcome),
+                          if (plan['d1_bias'] != null)
+                            ('D1 bias', plan['d1_bias'].toString()),
+                          if (plan['direction'] != null &&
+                              plan['direction'] != 'none')
+                            (
+                              'Direction',
+                              (plan['direction'] as String).toUpperCase()
+                            ),
+                          if (plan['entry_price'] != null)
+                            ('Entry', plan['entry_price'].toString()),
+                          if (plan['stop_loss'] != null)
+                            ('Stop loss', plan['stop_loss'].toString()),
+                          if (tps.isNotEmpty)
+                            (
+                              'Take profits',
+                              tps
+                                  .map((tp) =>
+                                      '${(tp as Map)['label']} ${tp['price']}${tp['hit'] == true ? ' ✓' : ''}')
+                                  .join(' · ')
+                            ),
+                          if (invalidation.isNotEmpty)
+                            ('Invalidation', invalidation),
+                        ]),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: EdgeButton(
+                            label: 'Delete',
+                            icon: Icons.delete_outline,
+                            kind: EdgeButtonKind.danger,
+                            busy: _deleting,
+                            onPressed: () async {
+                              setState(() => _deleting = true);
+                              await widget.onDelete();
+                              if (mounted) {
+                                setState(() => _deleting = false);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _outcomeLabel(String? outcome) {
+    switch (outcome) {
+      case 'tp_hit':
+        return 'Target hit';
+      case 'stopped_out':
+        return 'Stopped out';
+      case 'manual_close':
+        return 'Manual close';
+      case 'missed':
+        return 'Missed';
+      case 'invalidated':
+        return 'Invalidated';
+      default:
+        return null;
+    }
+  }
+
+  Widget _kvGrid(BuildContext context, List<(String, String)> rows) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (ctx, box) {
+      final twoCol = box.maxWidth > 420;
+      final children = rows.map(
+        (r) => _KvCell(label: r.$1, value: r.$2),
+      );
+      if (!twoCol) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children
+              .map((c) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: c,
+                  ))
+              .toList(),
+        );
+      }
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: children
+            .map((c) => SizedBox(
+                  width: (box.maxWidth - 12) / 2,
+                  child: c,
+                ))
+            .toList(),
+      );
+    });
+  }
+}
+
+class _KvCell extends StatelessWidget {
+  const _KvCell({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: AppTheme.sans(
+            size: 10,
+            weight: FontWeight.w600,
+            color: EdgeColors.muted,
+            letterSpacing: 1.6,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: AppTheme.sans(
+            size: 12.5,
+            color: Colors.white,
+            height: 1.45,
+          ),
+        ),
+      ],
     );
   }
 }
