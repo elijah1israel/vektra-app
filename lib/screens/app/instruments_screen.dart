@@ -124,7 +124,11 @@ class _InstrumentsScreenState extends State<InstrumentsScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: EdgeCard(
+              plain: true,
               padding: const EdgeInsets.all(14),
+              borderColor: sub != null
+                  ? EdgeColors.accent.withOpacity(0.25)
+                  : EdgeColors.white08,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [

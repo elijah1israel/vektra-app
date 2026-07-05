@@ -1,3 +1,17 @@
+int _asInt(dynamic v, [int fallback = 0]) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+double? _asDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
 class Instrument {
   Instrument({
     required this.id,
@@ -9,7 +23,7 @@ class Instrument {
   });
 
   factory Instrument.fromJson(Map<String, dynamic> j) => Instrument(
-        id: j['id'] as int,
+        id: _asInt(j['id']),
         label: (j['label'] ?? '') as String,
         symbol: (j['symbol'] ?? '') as String,
         sessionTz: j['session_tz'] as String?,
@@ -35,10 +49,10 @@ class Schedule {
   });
 
   factory Schedule.fromJson(Map<String, dynamic> j) => Schedule(
-        hour: (j['hour'] as num).toInt(),
-        minute: (j['minute'] as num).toInt(),
+        hour: _asInt(j['hour']),
+        minute: _asInt(j['minute']),
         days: (j['days'] as List<dynamic>?)
-                ?.map((e) => (e as num).toInt())
+                ?.map((e) => _asInt(e))
                 .toList() ??
             const [],
         tz: j['tz'] as String?,
@@ -67,7 +81,7 @@ class Subscription {
   });
 
   factory Subscription.fromJson(Map<String, dynamic> j) => Subscription(
-        id: j['id'] as int,
+        id: _asInt(j['id']),
         instrument: Instrument.fromJson(
             (j['instrument'] as Map).cast<String, dynamic>()),
         schedules: (j['schedules'] as List<dynamic>? ?? const [])
@@ -76,7 +90,9 @@ class Subscription {
         timeframes: (j['timeframes'] as List<dynamic>? ?? const [])
             .map((e) => e.toString())
             .toList(),
-        minRr: (j['min_rr'] as num?)?.toDouble(),
+        // DRF's DecimalField serialises as a String by default — parse
+        // both cases so a subscribed instrument is actually recognised.
+        minRr: _asDouble(j['min_rr']),
         tpMode: j['tp_mode'] as String?,
         orderType: j['order_type'] as String?,
         strategy: j['strategy'] as String?,

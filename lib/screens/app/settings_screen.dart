@@ -279,6 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 14),
         EdgeCard(
+          plain: true,
           borderColor: EdgeColors.danger.withOpacity(0.3),
           tint: EdgeColors.danger.withOpacity(0.04),
           child: Column(
