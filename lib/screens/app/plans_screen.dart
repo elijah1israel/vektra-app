@@ -8,7 +8,6 @@ import '../../theme/app_theme.dart';
 import '../../theme/colors.dart';
 import '../../widgets/edge_buttons.dart';
 import '../../widgets/edge_card.dart';
-import '../../widgets/instrument_icon.dart';
 import '../../widgets/page_header.dart';
 import '../../widgets/spinner.dart';
 import '../../widgets/toast.dart';
@@ -254,12 +253,6 @@ class _PlansScreenState extends State<PlansScreen> {
           children: [
             Row(
               children: [
-                InstrumentIconBadge(
-                  label: instrument['label'] as String? ?? '',
-                  symbol: instrument['symbol'] as String? ?? '',
-                  size: 36,
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     instrument['label'] as String? ?? 'Instrument',
