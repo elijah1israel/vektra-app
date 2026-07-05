@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_client.dart';
@@ -129,56 +130,9 @@ class _TelegramScreenState extends State<TelegramScreen> {
         ),
         const SizedBox(height: 18),
         if (linked)
-          EdgeCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: EdgeColors.accent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: EdgeColors.accent.withOpacity(0.25),
-                    ),
-                  ),
-                  child: const Icon(Icons.verified_user_outlined,
-                      color: EdgeColors.accent, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Telegram linked',
-                          style: AppTheme.sans(
-                            size: 14,
-                            weight: FontWeight.w600,
-                            color: Colors.white,
-                          )),
-                      const SizedBox(height: 3),
-                      Text(
-                        _status?['account'] is Map &&
-                                (_status!['account']
-                                        as Map)['telegram_username'] !=
-                                    null
-                            ? '@${(_status!['account'] as Map)['telegram_username']}'
-                            : 'chat ${(_status?['account'] as Map?)?['telegram_chat_id'] ?? '—'}',
-                        style: AppTheme.sans(
-                            size: 12, color: EdgeColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-                EdgeButton(
-                  label: 'Unlink',
-                  icon: Icons.link_off,
-                  kind: EdgeButtonKind.danger,
-                  onPressed: _unpair,
-                ),
-              ],
-            ),
+          _LinkedCard(
+            account: (_status?['account'] as Map?)?.cast<String, dynamic>(),
+            onUnpair: _unpair,
           )
         else
           EdgeCard(
@@ -342,6 +296,247 @@ class _TelegramScreenState extends State<TelegramScreen> {
 
   String _fmt(int secs) =>
       '${(secs ~/ 60)}:${(secs % 60).toString().padLeft(2, '0')}';
+}
+
+/// Profile-style block for the linked state. Shows the Telegram username
+/// (or a friendly fallback), the chat / user id, and when the account
+/// was paired — followed by an "Unlink" action.
+class _LinkedCard extends StatelessWidget {
+  const _LinkedCard({required this.account, required this.onUnpair});
+
+  final Map<String, dynamic>? account;
+  final Future<void> Function() onUnpair;
+
+  @override
+  Widget build(BuildContext context) {
+    final username = (account?['telegram_username'] as String?) ?? '';
+    final chatId = account?['telegram_chat_id'];
+    final pairedAt = account?['paired_at'] as String?;
+    final displayHandle = username.isNotEmpty ? '@$username' : 'Private account';
+    final chatText = chatId != null ? chatId.toString() : '—';
+    String pairedText = '—';
+    if (pairedAt != null) {
+      try {
+        pairedText =
+            DateFormat("d MMM yyyy 'at' HH:mm").format(DateTime.parse(pairedAt).toLocal());
+      } catch (_) {
+        pairedText = pairedAt;
+      }
+    }
+
+    return EdgeCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2AABEE), Color(0xFF229ED9)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF229ED9).withOpacity(0.4),
+                      blurRadius: 22,
+                      offset: const Offset(0, 8),
+                      spreadRadius: -6,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.send_rounded,
+                    color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Telegram linked',
+                            style: AppTheme.sans(
+                              size: 14.5,
+                              weight: FontWeight.w600,
+                              color: Colors.white,
+                            )),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: EdgeColors.accent.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: EdgeColors.accent.withOpacity(0.35),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  color: EdgeColors.accent, size: 11),
+                              const SizedBox(width: 4),
+                              Text(
+                                'ACTIVE',
+                                style: AppTheme.sans(
+                                  size: 9.5,
+                                  color: EdgeColors.accent,
+                                  weight: FontWeight.w700,
+                                  letterSpacing: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Trade plans are delivered to this account.',
+                      style: AppTheme.sans(
+                        size: 11.5,
+                        color: EdgeColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _KvRow(
+            icon: Icons.alternate_email,
+            label: 'Username',
+            value: displayHandle,
+            hint: username.isEmpty ? 'Not set on Telegram' : null,
+          ),
+          const Divider(color: EdgeColors.white06, height: 20),
+          _KvRow(
+            icon: Icons.tag,
+            label: 'Telegram ID',
+            value: chatText,
+            copyable: chatId != null,
+          ),
+          const Divider(color: EdgeColors.white06, height: 20),
+          _KvRow(
+            icon: Icons.calendar_today_outlined,
+            label: 'Linked on',
+            value: pairedText,
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              EdgeButton(
+                label: 'Unlink',
+                icon: Icons.link_off,
+                kind: EdgeButtonKind.danger,
+                onPressed: () => onUnpair(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KvRow extends StatelessWidget {
+  const _KvRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.hint,
+    this.copyable = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? hint;
+  final bool copyable;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 15, color: EdgeColors.muted),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: AppTheme.sans(
+            size: 11.5,
+            color: EdgeColors.muted,
+            weight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.mono(
+              size: 13,
+              color: Colors.white,
+              weight: FontWeight.w500,
+            ),
+          ),
+        ),
+        if (copyable) ...[
+          const SizedBox(width: 8),
+          _CopyButton(text: value),
+        ] else if (hint != null) ...[
+          const SizedBox(width: 6),
+          Tooltip(
+            message: hint!,
+            child: const Icon(Icons.info_outline,
+                size: 13, color: EdgeColors.muted),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CopyButton extends StatefulWidget {
+  const _CopyButton({required this.text});
+  final String text;
+  @override
+  State<_CopyButton> createState() => _CopyButtonState();
+}
+
+class _CopyButtonState extends State<_CopyButton> {
+  bool _copied = false;
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        await Clipboard.setData(ClipboardData(text: widget.text));
+        setState(() => _copied = true);
+        await Future.delayed(const Duration(milliseconds: 1200));
+        if (mounted) setState(() => _copied = false);
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          _copied ? Icons.check : Icons.copy_outlined,
+          size: 14,
+          color: _copied ? EdgeColors.accent : EdgeColors.muted,
+        ),
+      ),
+    );
+  }
 }
 
 class _Step extends StatelessWidget {
