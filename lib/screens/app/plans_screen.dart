@@ -126,7 +126,7 @@ class _PlansScreenState extends State<PlansScreen> {
         children: [
           const PageHeader(
             eyebrow: 'Owner tools',
-            title: Text('D1 + H4 plans'),
+            title: Text('Trade Plans'),
             subtitle:
                 'An endless cycle — every H4 close advances the plan one step.',
           ),
@@ -170,7 +170,7 @@ class _PlansScreenState extends State<PlansScreen> {
       children: [
         const PageHeader(
           eyebrow: 'Owner tools',
-          title: Text('D1 + H4 plans'),
+          title: Text('Trade Plans'),
           subtitle:
               'Every H4 close advances the plan one step. While flat it holds a neutral watch with both directions mapped.',
         ),
