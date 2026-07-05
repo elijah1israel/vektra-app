@@ -226,6 +226,26 @@ class _PlansScreenState extends State<PlansScreen> {
     return _directionChip(direction);
   }
 
+  /// "3m", "42m", "3h 24m", "2d 4h" — pass `endIso == null` for an
+  /// open-ended active plan (elapsed from `startIso` to now).
+  static String formatDuration(String? startIso, String? endIso) {
+    if (startIso == null) return '—';
+    final start = DateTime.tryParse(startIso);
+    if (start == null) return '—';
+    final end = endIso != null ? DateTime.tryParse(endIso) : DateTime.now();
+    if (end == null) return '—';
+    var ms = end.difference(start).inMilliseconds;
+    if (ms < 0) ms = 0;
+    final mins = ms ~/ 60000;
+    if (mins < 60) return '${mins}m';
+    final hrs = mins ~/ 60;
+    final remMins = mins % 60;
+    if (hrs < 24) return remMins > 0 ? '${hrs}h ${remMins}m' : '${hrs}h';
+    final days = hrs ~/ 24;
+    final remHrs = hrs % 24;
+    return remHrs > 0 ? '${days}d ${remHrs}h' : '${days}d';
+  }
+
   Widget _sectionTitle(String s) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Text(
@@ -268,6 +288,21 @@ class _PlansScreenState extends State<PlansScreen> {
                   const SizedBox(width: 6),
                   _directionChip(direction),
                 ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.access_time,
+                    size: 12, color: EdgeColors.muted),
+                const SizedBox(width: 5),
+                Text(
+                  'Age ${formatDuration(plan['created_at'] as String?, null)}',
+                  style: AppTheme.sans(
+                    size: 11,
+                    color: EdgeColors.muted,
+                  ),
+                ),
               ],
             ),
             if ((plan['narrative'] as String?)?.isNotEmpty ?? false) ...[
@@ -483,6 +518,19 @@ class _HistoryRowState extends State<_HistoryRow> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _PlansScreenState.formatDuration(
+                      plan['created_at'] as String?,
+                      (plan['closed_at'] as String?) ??
+                          plan['updated_at'] as String?,
+                    ),
+                    style: AppTheme.sans(
+                      size: 11,
+                      color: EdgeColors.slate300,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(width: 6),
                   AnimatedRotation(
                     turns: _open ? 0.5 : 0,
@@ -548,6 +596,14 @@ class _HistoryRowState extends State<_HistoryRow> {
                             ),
                           if (invalidation.isNotEmpty)
                             ('Invalidation', invalidation),
+                          (
+                            'Duration',
+                            _PlansScreenState.formatDuration(
+                              plan['created_at'] as String?,
+                              (plan['closed_at'] as String?) ??
+                                  plan['updated_at'] as String?,
+                            ),
+                          ),
                         ]),
                         const SizedBox(height: 12),
                         Align(
