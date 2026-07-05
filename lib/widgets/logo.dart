@@ -23,11 +23,14 @@ class VektraLogo extends StatelessWidget {
               ),
             ],
           ),
-          child: SvgPicture.asset(
-            'assets/logo.svg',
-            width: size,
-            height: size,
-            semanticsLabel: 'VektraPro',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(size * 0.22),
+            child: SvgPicture.asset(
+              'assets/vektra-icon.svg',
+              width: size,
+              height: size,
+              semanticsLabel: 'VektraPro',
+            ),
           ),
         ),
         if (showText) ...[
