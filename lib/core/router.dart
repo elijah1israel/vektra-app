@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../screens/app/dashboard_screen.dart';
 import '../screens/app/discover_screen.dart';
 import '../screens/app/instruments_screen.dart';
+import '../screens/app/new_instrument_screen.dart';
 import '../screens/app/plans_screen.dart';
 import '../screens/app/pricing_screen.dart';
 import '../screens/app/settings_screen.dart';
@@ -83,6 +84,10 @@ GoRouter buildRouter(AuthState auth) {
           GoRoute(
             path: '/instruments',
             builder: (_, __) => const InstrumentsScreen(),
+          ),
+          GoRoute(
+            path: '/instruments/new',
+            builder: (_, __) => const NewInstrumentScreen(),
           ),
           GoRoute(
             path: '/instruments/:id/configure',

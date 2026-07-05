@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../api/api_client.dart';
 import '../../core/errors.dart';
 import '../../models/instrument.dart';
+import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/colors.dart';
 import '../../widgets/page_header.dart';
@@ -105,6 +106,7 @@ class _InstrumentsScreenState extends State<InstrumentsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const PageSpinner();
+    final isOwner = context.watch<AuthState>().user?.isBotOwner ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -115,6 +117,12 @@ class _InstrumentsScreenState extends State<InstrumentsScreen> {
               'Subscribe and configure how the bot analyses each market. Trade plans are delivered to your paired Telegram.',
         ),
         const SizedBox(height: 18),
+        if (isOwner) ...[
+          _AddInstrumentTile(
+            onTap: () => context.push('/instruments/new'),
+          ),
+          const SizedBox(height: 10),
+        ],
         ..._instruments.map((inst) {
           final sub = _subFor(inst.id);
           final running = _running[sub?.id] ?? false;
@@ -140,6 +148,80 @@ class _InstrumentsScreenState extends State<InstrumentsScreen> {
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+/// Owner-only tile shown at the top of the Instruments list. Whole tile
+/// is one tap that pushes into the new-instrument form.
+class _AddInstrumentTile extends StatelessWidget {
+  const _AddInstrumentTile({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: EdgeColors.accent.withOpacity(0.35),
+              style: BorderStyle.solid,
+            ),
+            color: EdgeColors.accent.withOpacity(0.05),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EdgeColors.accent.withOpacity(0.15),
+                  border: Border.all(
+                    color: EdgeColors.accent.withOpacity(0.4),
+                  ),
+                ),
+                child: const Icon(Icons.add,
+                    color: EdgeColors.accent, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Add instrument',
+                      style: AppTheme.sans(
+                        size: 14.5,
+                        weight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Owner only · test-scrape a symbol before adding to the catalog',
+                      style: AppTheme.sans(
+                        size: 11.5,
+                        color: EdgeColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  color: EdgeColors.accent, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// One row in the Instruments list. Whole card taps into the configure

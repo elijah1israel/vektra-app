@@ -297,7 +297,7 @@ class _PlansScreenState extends State<PlansScreen> {
                     size: 12, color: EdgeColors.muted),
                 const SizedBox(width: 5),
                 Text(
-                  'Age ${formatDuration(plan['created_at'] as String?, null)}',
+                  formatDuration(plan['created_at'] as String?, null),
                   style: AppTheme.sans(
                     size: 11,
                     color: EdgeColors.muted,
