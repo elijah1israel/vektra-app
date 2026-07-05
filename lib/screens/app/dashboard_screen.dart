@@ -85,30 +85,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final exhausted = used >= cap && cap < 100000;
     final next = computeNextRun(_subs);
 
-    return RefreshIndicator(
-      color: EdgeColors.accent,
-      backgroundColor: EdgeColors.card,
-      onRefresh: _load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          _Hero(
-            greeting: _greeting(),
-            firstName: firstName,
-            accountType: user?.accountType,
-            accountSize: user?.accountSize,
-          ),
-          const SizedBox(height: 20),
-          _NextRunCard(next: next, exhausted: exhausted),
-          const SizedBox(height: 14),
-          _UsageCard(used: used, cap: cap),
-          const SizedBox(height: 14),
-          const SessionsCard(),
-          const SizedBox(height: 18),
-          _InstrumentsBlock(subs: _subs),
-        ],
-      ),
+    // AppShell already wraps every screen in a SingleChildScrollView, so a
+    // Column here gets its natural bounded intrinsic height. A ListView
+    // would have been unbounded in that parent and rendered nothing.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Hero(
+          greeting: _greeting(),
+          firstName: firstName,
+          accountType: user?.accountType,
+          accountSize: user?.accountSize,
+        ),
+        const SizedBox(height: 20),
+        _NextRunCard(next: next, exhausted: exhausted),
+        const SizedBox(height: 14),
+        _UsageCard(used: used, cap: cap),
+        const SizedBox(height: 14),
+        const SessionsCard(),
+        const SizedBox(height: 18),
+        _InstrumentsBlock(subs: _subs),
+      ],
     );
   }
 }

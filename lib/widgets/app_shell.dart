@@ -22,7 +22,6 @@ const _baseNav = <NavEntry>[
   NavEntry('/instruments', 'Instruments', Icons.candlestick_chart_outlined),
   NavEntry('/discover', 'Discover', Icons.people_outline),
   NavEntry('/pricing', 'Pricing', Icons.credit_card_outlined),
-  NavEntry('/telegram', 'Telegram', Icons.send),
   NavEntry('/settings', 'Settings', Icons.settings_outlined),
 ];
 
@@ -120,36 +119,46 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: EdgeColors.surface.withOpacity(0.94),
-        border: const Border(
-          top: BorderSide(color: EdgeColors.white06),
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(22),
+        topRight: Radius.circular(22),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: EdgeColors.surface.withOpacity(0.94),
+          border: const Border(
+            top: BorderSide(color: EdgeColors.white06),
+          ),
         ),
-      ),
-      padding: EdgeInsets.only(
-        top: 6,
-        bottom: MediaQuery.of(context).padding.bottom + 6,
-      ),
-      child: SizedBox(
-        height: kBottomNavHeight - 12,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 4),
-          itemBuilder: (context, index) {
-            final e = items[index];
-            final active =
-                current == e.route || current.startsWith('${e.route}/');
-            return _BottomTab(entry: e, active: active);
-          },
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 4,
+        ),
+        child: SizedBox(
+          height: kBottomNavHeight - 4,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 2),
+            itemBuilder: (context, index) {
+              final e = items[index];
+              final active =
+                  current == e.route || current.startsWith('${e.route}/');
+              return _BottomTab(entry: e, active: active);
+            },
+          ),
         ),
       ),
     );
   }
 }
 
+/// Two-part active state matching the app's premium feel:
+///   • a 22-px accent bar anchored to the top edge of the tab (like a
+///     modern browser tab indicator), with a soft glow
+///   • a subtle radial tint fading down behind the icon
+/// Inactive tabs are colourless icon + label — nothing shouty.
 class _BottomTab extends StatelessWidget {
   const _BottomTab({required this.entry, required this.active});
   final NavEntry entry;
@@ -157,37 +166,81 @@ class _BottomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? EdgeColors.accent : EdgeColors.muted;
     return InkWell(
       onTap: () => context.go(entry.route),
       borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: active
-              ? EdgeColors.accent.withOpacity(0.10)
-              : Colors.transparent,
-          border: Border.all(
-            color: active
-                ? EdgeColors.accent.withOpacity(0.35)
-                : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      splashColor: EdgeColors.accent.withOpacity(0.08),
+      highlightColor: EdgeColors.accent.withOpacity(0.04),
+      child: SizedBox(
+        width: 78,
+        child: Stack(
           children: [
-            Icon(entry.icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            Text(
-              entry.label,
-              style: AppTheme.sans(
-                size: 12.5,
-                color: color,
-                weight: FontWeight.w600,
+            // Soft radial tint that only appears when active — grounds
+            // the tab so the indicator bar doesn't float on its own.
+            Positioned.fill(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 220),
+                opacity: active ? 1 : 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0, -0.6),
+                      radius: 0.9,
+                      colors: [
+                        EdgeColors.accent.withOpacity(0.14),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  height: 2.5,
+                  width: active ? 22 : 0,
+                  decoration: BoxDecoration(
+                    color: EdgeColors.accent,
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: EdgeColors.accent.withOpacity(0.6),
+                              blurRadius: 10,
+                              spreadRadius: -1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    entry.icon,
+                    size: 20,
+                    color:
+                        active ? EdgeColors.accentHi : EdgeColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  entry.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.sans(
+                    size: 10.5,
+                    color: active
+                        ? Colors.white
+                        : EdgeColors.muted,
+                    weight: active ? FontWeight.w600 : FontWeight.w500,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
