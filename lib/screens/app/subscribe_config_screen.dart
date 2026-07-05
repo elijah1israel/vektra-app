@@ -64,7 +64,10 @@ const _orderTypes = [
 
 class SubscribeConfigScreen extends StatefulWidget {
   const SubscribeConfigScreen({super.key, required this.instrumentId});
-  final int instrumentId;
+
+  /// String form of the id so both integer and UUID-style backend ids
+  /// are matched cleanly (compared via `.toString()` on both sides).
+  final String instrumentId;
   @override
   State<SubscribeConfigScreen> createState() =>
       _SubscribeConfigScreenState();
@@ -106,14 +109,15 @@ class _SubscribeConfigScreenState extends State<SubscribeConfigScreen> {
           .map((e) => Subscription.fromJson(
               (e as Map).cast<String, dynamic>()))
           .toList();
+      final wantedId = widget.instrumentId;
       Instrument? found;
       for (final i in insts) {
-        if (i.id == widget.instrumentId) found = i;
+        if (i.id.toString() == wantedId) found = i;
       }
       Subscription? existing;
       Subscription? other;
       for (final s in subs) {
-        if (s.instrument.id == widget.instrumentId) {
+        if (s.instrument.id.toString() == wantedId) {
           existing = s;
         } else {
           other ??= s;

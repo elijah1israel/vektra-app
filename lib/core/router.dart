@@ -87,8 +87,7 @@ GoRouter buildRouter(AuthState auth) {
           GoRoute(
             path: '/instruments/:id/configure',
             builder: (_, state) => SubscribeConfigScreen(
-              instrumentId:
-                  int.parse(state.pathParameters['id']!),
+              instrumentId: state.pathParameters['id']!,
             ),
           ),
           GoRoute(
