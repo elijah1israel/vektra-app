@@ -57,6 +57,66 @@ DateTime? nextFiringForSchedule(
   return null;
 }
 
+const _minPerDay = 24 * 60;
+const _minPerWeek = 7 * _minPerDay;
+
+/// Wall-clock triple. `day` is 0=Mon … 6=Sun, matching the backend's
+/// `Schedule.days` mask and the web app.
+class WallClock {
+  const WallClock({required this.day, required this.hour, required this.minute});
+  final int day;
+  final int hour;
+  final int minute;
+}
+
+/// Minutes to ADD to a local wall clock to reach the session's wall clock.
+/// Positive when the session is ahead of local (e.g. NY is +5h from London
+/// most of the year). Uses today as the reference so DST is respected for
+/// the current firing window.
+int _localToSessionShiftMinutes(String sessionTz) {
+  try {
+    final loc = tz.getLocation(sessionTz);
+    final now = DateTime.now();
+    final sessionOffset =
+        tz.TZDateTime.from(now, loc).timeZoneOffset.inMinutes;
+    final localOffset = now.timeZoneOffset.inMinutes;
+    return sessionOffset - localOffset;
+  } catch (_) {
+    return 0;
+  }
+}
+
+WallClock _shift(WallClock wc, int deltaMinutes) {
+  final total = wc.day * _minPerDay + wc.hour * 60 + wc.minute + deltaMinutes;
+  final wrapped = ((total % _minPerWeek) + _minPerWeek) % _minPerWeek;
+  return WallClock(
+    day: wrapped ~/ _minPerDay,
+    hour: (wrapped % _minPerDay) ~/ 60,
+    minute: wrapped % 60,
+  );
+}
+
+/// Convert a wall clock from the session tz into the user's local tz.
+/// Handles day-boundary crossings (e.g. 04:30 Sat NY → 09:30 Sat London).
+WallClock sessionWallToLocal(WallClock session, String sessionTz) =>
+    _shift(session, -_localToSessionShiftMinutes(sessionTz));
+
+/// Convert a wall clock from the user's local tz into the session tz.
+WallClock localWallToSession(WallClock local, String sessionTz) =>
+    _shift(local, _localToSessionShiftMinutes(sessionTz));
+
+/// Human abbreviation for the local zone, e.g. "GMT+3" — Dart's
+/// `DateTime.timeZoneName` gives the OS-provided string on Android/iOS but
+/// can return the full IANA name on some devices, so we normalise.
+String localTimezoneAbbreviation() {
+  final offset = DateTime.now().timeZoneOffset;
+  final sign = offset.isNegative ? '-' : '+';
+  final hours = offset.inHours.abs();
+  final minutes = offset.inMinutes.abs() % 60;
+  if (minutes == 0) return 'GMT$sign$hours';
+  return 'GMT$sign$hours:${minutes.toString().padLeft(2, '0')}';
+}
+
 class NextRun {
   const NextRun({required this.at, required this.subscription});
   final DateTime at; // UTC instant

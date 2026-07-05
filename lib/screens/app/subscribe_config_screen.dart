@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../api/api_client.dart';
 import '../../core/errors.dart';
+import '../../core/schedule_math.dart';
 import '../../models/instrument.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
@@ -137,26 +138,60 @@ class _SubscribeConfigScreenState extends State<SubscribeConfigScreen> {
   }
 
   void _applyFromSub(Subscription s) {
-    _timeframesSel =
-        s.timeframes.isEmpty ? const ['D1', 'H4'] : s.timeframes.take(2).toList();
+    _timeframesSel = s.timeframes.isEmpty
+        ? const ['D1', 'H4']
+        : s.timeframes.take(2).toList();
     _minRr = (s.minRr ?? 3).round();
     _tpMode = s.tpMode ?? 'single';
     _orderType = s.orderType ?? 'versatile';
     _strategy = s.strategy ?? 'smc';
-    if (s.schedules.isNotEmpty) {
-      final times = <TimeOfDay>[];
-      final days = <int>{};
-      for (final sc in s.schedules) {
-        times.add(TimeOfDay(hour: sc.hour, minute: sc.minute));
-        days.addAll(sc.days);
+    if (s.schedules.isEmpty) return;
+
+    // Schedules on the wire are wall-clock in the instrument's session tz
+    // (UTC for crypto, America/New_York for FX). The UI has to display and
+    // edit them in the user's *local* wall clock, so convert here.
+    final everyDay = s.schedules.any((sc) => sc.days.isEmpty);
+    final localTimes = <String>{}; // "HH:MM" for uniqueness
+    final localDays = <int>{};
+    for (final sc in s.schedules) {
+      final tzName = sc.tz ?? s.instrument.sessionTz ?? 'UTC';
+      if (everyDay) {
+        final local = sessionWallToLocal(
+          WallClock(day: 0, hour: sc.hour, minute: sc.minute),
+          tzName,
+        );
+        localTimes.add('${_pad(local.hour)}:${_pad(local.minute)}');
+      } else {
+        for (final d in sc.days) {
+          final local = sessionWallToLocal(
+            WallClock(day: d, hour: sc.hour, minute: sc.minute),
+            tzName,
+          );
+          localTimes.add('${_pad(local.hour)}:${_pad(local.minute)}');
+          localDays.add(local.day);
+        }
       }
-      _times = times.take(6).toList();
-      if (_times.isEmpty) _times = [const TimeOfDay(hour: 8, minute: 0)];
-      _daysSel
-        ..clear()
-        ..addAll(days);
     }
+    final sortedTimes = localTimes.toList()..sort();
+    _times = sortedTimes
+        .take(6)
+        .map((t) {
+          final parts = t.split(':');
+          return TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        })
+        .toList();
+    if (_times.isEmpty) {
+      _times = [const TimeOfDay(hour: 8, minute: 0)];
+    }
+    _daysSel
+      ..clear()
+      ..addAll(everyDay ? const <int>[] : localDays);
   }
+
+  String _pad(int n) => n.toString().padLeft(2, '0');
 
   Future<void> _save() async {
     if (_timeframesSel.isEmpty) {
@@ -168,13 +203,51 @@ class _SubscribeConfigScreenState extends State<SubscribeConfigScreen> {
       ToastMessenger.instance.error('Add at least one analysis time.');
       return;
     }
-    final schedules = _times
-        .map((t) => {
-              'hour': t.hour,
-              'minute': t.minute,
-              'days': _daysSel.toList()..sort(),
-            })
-        .toList();
+    // Convert the local wall-clock (times × days) picker state into the
+    // instrument's session tz, bucketing by (session_hour, session_minute)
+    // so entries that collapse to the same time share a days[] set.
+    final sessionTz = _instrument!.sessionTz ?? 'UTC';
+    final buckets = <String, Map<String, dynamic>>{};
+    if (_daysSel.isEmpty) {
+      for (final t in _times) {
+        final s = localWallToSession(
+          WallClock(day: 0, hour: t.hour, minute: t.minute),
+          sessionTz,
+        );
+        final key = '${_pad(s.hour)}:${_pad(s.minute)}';
+        buckets[key] = {
+          'hour': s.hour,
+          'minute': s.minute,
+          'days': <int>[],
+        };
+      }
+    } else {
+      for (final t in _times) {
+        for (final d in _daysSel) {
+          final s = localWallToSession(
+            WallClock(day: d, hour: t.hour, minute: t.minute),
+            sessionTz,
+          );
+          final key = '${_pad(s.hour)}:${_pad(s.minute)}';
+          final bucket = buckets.putIfAbsent(
+            key,
+            () => {
+              'hour': s.hour,
+              'minute': s.minute,
+              'days': <int>{},
+            },
+          );
+          (bucket['days'] as Set<int>).add(s.day);
+        }
+      }
+    }
+    final schedules = buckets.values.map((b) {
+      final days = b['days'];
+      final list = days is Set<int>
+          ? (days.toList()..sort())
+          : (days as List<int>);
+      return {'hour': b['hour'], 'minute': b['minute'], 'days': list};
+    }).toList();
     final payload = {
       'timeframes': _timeframesSel,
       'min_rr': _minRr,
@@ -409,8 +482,10 @@ class _SubscribeConfigScreenState extends State<SubscribeConfigScreen> {
               const SizedBox(height: 18),
               Row(
                 children: [
-                  Text('ANALYSIS TIMES',
-                      style: AppTheme.label()),
+                  Text(
+                    'ANALYSIS TIMES · ${localTimezoneAbbreviation()}',
+                    style: AppTheme.label(),
+                  ),
                   const Spacer(),
                   Text('${_times.length} / 6',
                       style: AppTheme.sans(

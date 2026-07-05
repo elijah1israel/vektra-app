@@ -7,7 +7,6 @@ import '../../core/errors.dart';
 import '../../models/instrument.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/colors.dart';
-import '../../widgets/instrument_icon.dart';
 import '../../widgets/page_header.dart';
 import '../../widgets/spinner.dart';
 import '../../widgets/toast.dart';
@@ -184,12 +183,6 @@ class _InstrumentCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              InstrumentIconBadge(
-                label: instrument.label,
-                symbol: instrument.symbol,
-                size: 44,
-              ),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
