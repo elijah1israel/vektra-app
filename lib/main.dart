@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api/api_client.dart';
 import 'api/token_store.dart';
 import 'core/router.dart';
+import 'core/schedule_math.dart';
 import 'state/auth_state.dart';
 import 'theme/app_theme.dart';
 import 'theme/colors.dart';
@@ -12,6 +13,7 @@ import 'widgets/toast.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  initTimezones();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,

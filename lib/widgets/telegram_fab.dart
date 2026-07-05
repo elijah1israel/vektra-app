@@ -3,7 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/auth_state.dart';
 import '../theme/colors.dart';
+import 'app_shell.dart' show kBottomNavHeight;
 
+/// Floating Telegram shortcut. Anchored above the bottom nav so it never
+/// covers a tab — kBottomNavHeight is the strip's fixed height, plus the
+/// system inset, plus a small gap.
 class TelegramFab extends StatelessWidget {
   const TelegramFab({super.key});
 
@@ -12,17 +16,18 @@ class TelegramFab extends StatelessWidget {
     final linked = context.select<AuthState, bool>(
         (a) => a.user?.telegramLinked ?? false);
     final dotColor = linked ? EdgeColors.accent : EdgeColors.warning;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Positioned(
-      right: 20,
-      bottom: 24,
+      right: 18,
+      bottom: kBottomNavHeight + bottomInset + 14,
       child: GestureDetector(
         onTap: () => context.push('/telegram'),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 54,
+              height: 54,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -33,15 +38,15 @@ class TelegramFab extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF229ED9).withOpacity(0.6),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
+                    color: const Color(0xFF229ED9).withOpacity(0.55),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
                     spreadRadius: -4,
                   ),
                 ],
               ),
               child: const Icon(Icons.send_rounded,
-                  color: Colors.white, size: 26),
+                  color: Colors.white, size: 24),
             ),
             Positioned(
               top: -2,
