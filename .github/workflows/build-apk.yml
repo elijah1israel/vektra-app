@@ -76,19 +76,33 @@ jobs:
         run: flutter pub get
 
       - name: Build release APK (split per ABI)
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
+          DEFINES=""
+          if [ -n "$API_BASE_URL" ]; then
+            DEFINES="--dart-define=API_BASE_URL=$API_BASE_URL"
+          fi
           flutter build apk \
             --release \
             --split-per-abi \
             --build-number=${{ github.run_number }} \
-            --build-name=1.0.${{ github.run_number }}
+            --build-name=1.0.${{ github.run_number }} \
+            $DEFINES
 
       - name: Build universal release APK
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
+          DEFINES=""
+          if [ -n "$API_BASE_URL" ]; then
+            DEFINES="--dart-define=API_BASE_URL=$API_BASE_URL"
+          fi
           flutter build apk \
             --release \
             --build-number=${{ github.run_number }} \
-            --build-name=1.0.${{ github.run_number }}
+            --build-name=1.0.${{ github.run_number }} \
+            $DEFINES
 
       - name: Stage APK artifacts
         run: |
